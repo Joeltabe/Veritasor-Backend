@@ -7,8 +7,9 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
+        id: string
         userId: string
-        email: string
+        email?: string
       }
     }
   }
@@ -46,6 +47,7 @@ export async function requireAuth(
   }
 
   req.user = {
+    id: payload.userId,
     userId: payload.userId,
     email: payload.email,
   }

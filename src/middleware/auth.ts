@@ -3,7 +3,11 @@ import { Request, Response, NextFunction } from 'express';
 declare global {
   namespace Express {
     interface Request {
-      user?: { id: string };
+      user?: {
+        id: string;
+        userId: string;
+        email?: string;
+      };
     }
   }
 }
@@ -13,6 +17,6 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  req.user = { id: userId };
+  req.user = { id: userId, userId };
   next();
 }

@@ -5,12 +5,8 @@ import { config } from './config/index.js'
 import { attestationsRouter } from './routes/attestations.js'
 import { healthRouter } from './routes/health.js'
 import { integrationsShopifyRouter } from './routes/integrations-shopify.js'
-import express from "express";
-import cors from "cors";
-import { attestationsRouter } from "./routes/attestations.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { analyticsRouter } from './routes/analytics.js'
-import { healthRouter } from './routes/health.js'
 import { authRouter } from './routes/auth.js'
 import {
   apiVersionMiddleware,
@@ -19,6 +15,7 @@ import {
 import businessRoutes from './routes/businesses.js'
 import integrationsRazorpayRouter from './routes/integrations-razorpay.js'
 import integrationsRouter from './routes/integrations.js'
+import { requestLogger } from './middleware/requestLogger.js'
 
 export const app = express();
 const PORT = process.env.PORT ?? 3000;
