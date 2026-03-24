@@ -1,3 +1,4 @@
+import "./config/index.js"; // Validates env vars on startup — throws if any are missing
 import express from "express";
 import cors from "cors";
 import { attestationsRouter } from "./routes/attestations.js";
