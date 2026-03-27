@@ -43,6 +43,7 @@ describe('optionalAuth middleware - Task 2.1: Token Verification', () => {
     optionalAuth(mockRequest as Request, mockResponse as Response, mockNext)
 
     expect(mockRequest.user).toEqual({
+      id: 'user-456',
       userId: 'user-456',
       email: 'user@test.com',
     })
@@ -165,6 +166,7 @@ describe('optionalAuth middleware - Task 2.3: Ensure next() is always called', (
     optionalAuth(mockRequest as Request, mockResponse as Response, mockNext)
 
     expect(mockRequest.user).toEqual({
+      id: 'user-789',
       userId: 'user-789',
       email: 'success@example.com',
     })
