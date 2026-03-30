@@ -1,6 +1,7 @@
 /**
  * Stripe OAuth callback service
- * Handles OAuth callback, validates state, exchanges code for tokens, and creates integration
+ * Handles OAuth callback, validates state, exchanges code for tokens, and
+ * idempotently persists the Stripe integration for the user.
  */
 
 import { consumeOAuthState } from './store.js'
@@ -95,8 +96,7 @@ export async function handleCallback(
   const scope = tokenData.scope
   const tokenType = tokenData.token_type
   
-  // Create integration record
-  await IntegrationRepository.create({
+  const integrationData = {
     userId,
     provider: 'stripe',
     externalId: stripeUserId,
@@ -107,7 +107,21 @@ export async function handleCallback(
       tokenType
     },
     metadata: {}
-  })
+  }
+
+  const existingIntegrations = await IntegrationRepository.listByUserId(userId)
+  const existingStripeIntegration = existingIntegrations.find((integration) =>
+    integration.provider === 'stripe' && integration.externalId === stripeUserId
+  )
+
+  if (existingStripeIntegration) {
+    await IntegrationRepository.update(existingStripeIntegration.id, {
+      token: integrationData.token,
+      metadata: integrationData.metadata
+    })
+  } else {
+    await IntegrationRepository.create(integrationData)
+  }
   
   return {
     success: true,

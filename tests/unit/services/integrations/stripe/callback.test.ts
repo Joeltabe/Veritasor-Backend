@@ -27,6 +27,9 @@ describe('Stripe OAuth Callback Service', () => {
     
     // Mock global fetch
     global.fetch = vi.fn()
+
+    vi.mocked(IntegrationRepository.listByUserId).mockResolvedValue([])
+    vi.mocked(IntegrationRepository.update).mockResolvedValue(null)
   })
   
   afterEach(() => {
@@ -253,6 +256,145 @@ describe('Stripe OAuth Callback Service', () => {
       
       expect(result.success).toBe(true)
       expect(result.stripeAccountId).toBe(mockStripeUserId)
+    })
+
+    it('should reprocess idempotently by updating an existing Stripe integration', async () => {
+      const mockAccessToken = 'sk_test_token_updated'
+      const mockRefreshToken = 'rt_test_refresh_updated'
+      const existingIntegration = {
+        id: 'integration-existing',
+        userId: mockUserId,
+        provider: 'stripe',
+        externalId: mockStripeUserId,
+        token: {
+          accessToken: 'sk_test_token_old',
+          refreshToken: 'rt_test_refresh_old',
+          scope: 'read_only',
+          tokenType: 'bearer'
+        },
+        metadata: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          access_token: mockAccessToken,
+          refresh_token: mockRefreshToken,
+          stripe_user_id: mockStripeUserId,
+          scope: 'read_write',
+          token_type: 'bearer'
+        })
+      } as Response)
+
+      vi.mocked(IntegrationRepository.listByUserId).mockResolvedValue([existingIntegration])
+      vi.mocked(IntegrationRepository.update).mockResolvedValue({
+        ...existingIntegration,
+        token: {
+          accessToken: mockAccessToken,
+          refreshToken: mockRefreshToken,
+          scope: 'read_write',
+          tokenType: 'bearer'
+        },
+        updatedAt: new Date().toISOString()
+      })
+
+      const result = await handleCallback(
+        { code: mockCode, state: mockState },
+        mockUserId
+      )
+
+      expect(IntegrationRepository.listByUserId).toHaveBeenCalledWith(mockUserId)
+      expect(IntegrationRepository.update).toHaveBeenCalledWith('integration-existing', {
+        token: {
+          accessToken: mockAccessToken,
+          refreshToken: mockRefreshToken,
+          scope: 'read_write',
+          tokenType: 'bearer'
+        },
+        metadata: {}
+      })
+      expect(IntegrationRepository.create).not.toHaveBeenCalled()
+      expect(result).toEqual({
+        success: true,
+        stripeAccountId: mockStripeUserId
+      })
+    })
+
+    it('should create a new integration when existing records do not match the Stripe account', async () => {
+      const mockAccessToken = 'sk_test_token123'
+
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          access_token: mockAccessToken,
+          stripe_user_id: mockStripeUserId,
+          scope: 'read_write',
+          token_type: 'bearer'
+        })
+      } as Response)
+
+      vi.mocked(IntegrationRepository.listByUserId).mockResolvedValue([
+        {
+          id: 'integration-other-provider',
+          userId: mockUserId,
+          provider: 'shopify',
+          externalId: mockStripeUserId,
+          token: {},
+          metadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: 'integration-other-account',
+          userId: mockUserId,
+          provider: 'stripe',
+          externalId: 'acct_other',
+          token: {},
+          metadata: {},
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ])
+
+      vi.mocked(IntegrationRepository.create).mockResolvedValue({
+        id: 'integration-new',
+        userId: mockUserId,
+        provider: 'stripe',
+        externalId: mockStripeUserId,
+        token: {
+          accessToken: mockAccessToken,
+          scope: 'read_write',
+          tokenType: 'bearer'
+        },
+        metadata: {},
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+
+      const result = await handleCallback(
+        { code: mockCode, state: mockState },
+        mockUserId
+      )
+
+      expect(IntegrationRepository.update).not.toHaveBeenCalled()
+      expect(IntegrationRepository.create).toHaveBeenCalledWith({
+        userId: mockUserId,
+        provider: 'stripe',
+        externalId: mockStripeUserId,
+        token: {
+          accessToken: mockAccessToken,
+          refreshToken: undefined,
+          scope: 'read_write',
+          tokenType: 'bearer'
+        },
+        metadata: {}
+      })
+      expect(result).toEqual({
+        success: true,
+        stripeAccountId: mockStripeUserId
+      })
     })
     
     it('should handle response without refresh token', async () => {
