@@ -4,3 +4,10 @@ dist
 .env.*
 *.local
 .DS_Store
+
+# Test coverage
+coverage
+*.lcov
+
+# Test artifacts
+.jest-cache

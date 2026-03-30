@@ -1,38 +1,34 @@
-import assert from 'assert';
-import MerkleTree from '../../../src/services/merkle';
+import { describe, it, expect } from 'vitest'
+import MerkleTree from '../../../src/services/merkle'
 
-function hex(s: string) {
-  return s;
-}
+describe('MerkleTree', () => {
+  const leaves = ['a', 'b', 'c', 'd', 'e']
 
-(function run() {
-  // sample leaves
-  const leaves = ['a', 'b', 'c', 'd', 'e'];
+  it('produces a deterministic root', () => {
+    const t1 = new MerkleTree(leaves)
+    const t2 = new MerkleTree(leaves)
+    expect(t1.getRoot()).toBe(t2.getRoot())
+  })
 
-  // Deterministic root: two constructions should match
-  const t1 = new MerkleTree(leaves);
-  const t2 = new MerkleTree(leaves);
-  assert.strictEqual(t1.getRoot(), t2.getRoot(), 'Roots should be deterministic and equal');
+  it('verifies a valid proof', () => {
+    const tree = new MerkleTree(leaves)
+    const index = 2
+    const proof = tree.getProof(index)
+    const root = tree.getRoot()
+    const ok = MerkleTree.verifyProof(leaves[index], proof, root, index)
+    expect(ok).toBe(true)
+  })
 
-  // Valid proof for a leaf
-  const index = 2; // 'c'
-  const proof = t1.getProof(index);
-  const root = t1.getRoot();
-  const ok = MerkleTree.verifyProof(leaves[index], proof, root, index);
-  assert.ok(ok, 'Valid proof should verify');
-
-  // Invalid proof should fail
-  const badProof = [...proof];
-  if (badProof.length > 0) {
-    // corrupt the first sibling
-    badProof[0] = hex(badProof[0].replace(/^[0-9a-f]/, (c) => (c === '0' ? '1' : '0')));
-  }
-  const bad = MerkleTree.verifyProof(leaves[index], badProof, root, index);
-  assert.strictEqual(bad, false, 'Tampered proof should not verify');
-
-  // report
-  // If running with a test runner these logs are optional
-  // Keep concise output for manual runs
-  // eslint-disable-next-line no-console
-  console.log('Merkle tests passed');
-})();
+  it('rejects a tampered proof', () => {
+    const tree = new MerkleTree(leaves)
+    const index = 2
+    const proof = tree.getProof(index)
+    const root = tree.getRoot()
+    const badProof = [...proof]
+    if (badProof.length > 0) {
+      badProof[0] = badProof[0].replace(/^[0-9a-f]/, (c) => (c === '0' ? '1' : '0'))
+    }
+    const bad = MerkleTree.verifyProof(leaves[index], badProof, root, index)
+    expect(bad).toBe(false)
+  })
+})
