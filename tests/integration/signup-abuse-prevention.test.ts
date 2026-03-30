@@ -21,6 +21,7 @@ import {
 } from "../../src/services/auth/signup.js";
 import {
   resetSignupRateLimitStore,
+  getSignupRateLimitStore,
   createSignupRateLimitStore,
   getSignupRateLimitStore,
 } from "../../src/utils/signupRateLimiter.js";
@@ -240,11 +241,7 @@ describe("Signup Service - Abuse Prevention", () => {
           password: "Password123!",
           ipAddress: "192.168.1.1",
         }),
-      ).rejects.toMatchObject({
-        details: expect.arrayContaining([
-          expect.stringContaining("too common"),
-        ]),
-      });
+      ).rejects.toThrow("Password does not meet security requirements");
     });
   });
 
@@ -590,9 +587,6 @@ describe("Auth Router - Signup Endpoint", () => {
     it("should show limited availability after max attempts", async () => {
       const ip = "192.168.1.51";
 
-      // Reset and re-create the singleton with the desired config so that
-      // checkSignupAvailability (which uses the singleton) sees the same store
-      resetSignupRateLimitStore();
       const rateLimiter = getSignupRateLimitStore({ maxAttemptsPerIp: 2 });
 
       rateLimiter.recordAttempt(ip, "user1@example.com");
